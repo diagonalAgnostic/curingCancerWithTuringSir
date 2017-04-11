@@ -1,0 +1,560 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+             "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+  <title>smallpt: Global Illumination in 99 lines of C++</title>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
+<style type="text/css">
+body, td {
+    font-family: Verdana, Arial, Helvetic, sans-serif;
+    font-size: 10pt;
+  }
+
+.banner {
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 32pt;
+    text-transform: lowercase;
+    font-weight: bolder;
+    font-style: italic;
+    color: #222222; /*#082245;*/
+  }
+
+span.hierarchy a {
+  text-decoration: none;
+  }
+
+  p { font-family: Verdana, Arial, Helvetica, sans-serif;
+         font-size: 10pt; }
+  h1 { font-family: Verdana, Arial, Helvetica, sans-serif;
+       font-size: 14pt; }
+  h2 { font-family: Verdana, Arial, Helvetica, sans-serif;
+       font-size: 12pt; padding-top: 12pt; }
+  h3 { font-family: Verdana, Arial, Helvetica, sans-serif;
+       font-size: 10pt; }
+  h4 { font-family: Verdana, Arial, Helvetica, sans-serif;
+       font-size: 10pt; }
+  td { font-family: Verdana, Arial, Helvetica, sans-serif;
+       font-size: 10pt; }
+  th { font-family: Verdana, Arial, Helvetica, sans-serif;
+       font-size: 10pt;
+       font-weight: bold; }
+  
+</style>
+
+<link type="text/css" rel="stylesheet" href="cpp2html.css">
+
+</head>
+<body bgcolor="#000000" leftMargin=0 topMargin=0
+text="#F7F7F7" link="#C8DDF2" vlink="#7D7D7D" alink="#D0D0D0"><center><!--
+--><table width=736 border=0 cellpadding=0 cellspacing=0>
+<tr>
+  <td><img src="images/subpage_header_red.jpg" width=736 height=60></td>
+</tr>
+<tr>
+  <td background="images/header_bg_gray.gif"><table width="100%" cellpadding=0
+  cellspacing=0 border=0>
+  <tr><td width=15 rowspan=2><img src="images/transparent.gif"
+  height=40 width=15 border=0 align=absmiddle></td>
+  <td><span class=banner>smallpt</span></td>
+  </tr>
+  <tr>
+  <td><span style="font-size: 8pt;" class=hierarchy>
+  <a href="http://kevinbeason.com/">Kevin Beason's Homepage</a> &gt;
+  <a href="/#software">Software</a> &gt;
+  smallpt
+  </span></td>
+  </tr>
+  </table>
+  </td>
+</tr>
+<tr>
+<!-- bgcolor="#222222" text="#FFFFFF" link="#6666FF" vlink="#66699" -->
+<!-- bgcolor="#030D1A" width=736 background="images/apb_trans_gray.gif" -->
+  <td valign=top bgcolor="#222222" width=736><!--
+  --><!-- table for padding -->
+  <table width="100%" cellpadding=15 cellspacing=0>
+  <tr>
+  <td>
+  <!-- Begin contents -->
+      
+
+
+
+
+
+
+
+
+
+<!--<script>beasonInclude("top.html");</script>-->
+<!--broken#include file="top.html"-->
+
+<h1>smallpt: Global Illumination in 99 lines of C++</h1>
+
+<a href="http://kevinbeason.com/">Kevin Beason</a> /
+<a href="../email.php?u=kevin.beason&d=gmail.com">
+<img src="images/beason_email_lblue.gif"
+align=absmiddle alt="kevin.beason [at] gmail.com" border=0></a>
+
+<br>
+<br>
+
+<a href="result_25k.png"><img src="result640.jpg" width=640 height=480
+alt="Cornell box image"></a>
+
+<p>
+<b>smallpt</b> is a global illumination renderer.
+It is 99 lines of C++, is open source,
+and renders the above scene using unbiased Monte Carlo path
+tracing <a href="result_25k.png">(click for full size)</a>.
+
+<h2>Features</h2>
+
+<ul>
+<li>Global illumination via unbiased Monte Carlo path tracing
+<li>99 lines of 72-column (or less) open source C++ code
+<li>Multi-threading using OpenMP
+<li>Soft shadows from diffuse luminaire
+<li>Specular, Diffuse, and Glass BRDFs
+<li>Antialiasing via super-sampling with importance-sampled tent distribution,
+  and 2x2 subpixels
+<li>Ray-sphere intersection
+<li>Modified <a href="http://www.graphics.cornell.edu/online/box/">Cornell box</a>
+  scene description
+<li>Cosine importance sampling of the hemisphere for diffuse reflection
+<li>Russian roulette for path termination
+<li>Russian roulette and splitting for selecting reflection
+  and/or refraction for glass BRDF
+<li>With minor changes compiles to a 4 KB binary (less than 4096 bytes)
+
+<p><font color="#999999">Added 11/11/2010:</font>
+  
+<li><a href="#mods">Modifications</a> including
+explicit light sampling and non-branching ray tree.
+<li><a href="#ports">Ports</a> to CUDA and BSGP featuring interactive
+  display and scene editing.
+  
+<p><font color="#999999">Added 3/12/2012:</font>
+
+<li><a href="#moreinfo">Presentation slides</a> explaining each line, by David Cline
+</ul>
+
+<h2><a name="source">Source</a></h2>
+
+Here is the <i>complete</i> source code for the entire renderer,
+including scene description:<p>
+  
+<table class=source style="background-color:#444444;"><tr><td
+  style="background-color:red; color:black; padding:0px; margin:0px;"><!-- Generator: GNU source-highlight 3.1.6
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><code><ol><li class="even"> <span class="preproc">#include</span><span class="normal"> </span><span class="string">&lt;math.h&gt;</span><span class="normal">   </span><span class="comment">// smallpt, a Path Tracer by Kevin Beason, 2008 </span>
+<li class="odd"> <span class="preproc">#include</span><span class="normal"> </span><span class="string">&lt;stdlib.h&gt;</span><span class="normal"> </span><span class="comment">// Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt </span>
+<li class="even"> <span class="preproc">#include</span><span class="normal"> </span><span class="string">&lt;stdio.h&gt;</span><span class="normal">  </span><span class="comment">//        Remove "-fopenmp" for g++ version &lt; 4.2 </span>
+<li class="odd"> <span class="keyword">struct</span><span class="normal"> </span><span class="classname">Vec</span><span class="normal"> </span><span class="cbracket">{</span><span class="normal">        </span><span class="comment">// Usage: time ./smallpt 5000 &amp;&amp; xv image.ppm </span>
+<li class="even"> <span class="normal">  </span><span class="type">double</span><span class="normal"> x</span><span class="symbol">,</span><span class="normal"> y</span><span class="symbol">,</span><span class="normal"> z</span><span class="symbol">;</span><span class="normal">                  </span><span class="comment">// position, also color (r,g,b) </span>
+<li class="odd"> <span class="normal">  </span><span class="function">Vec</span><span class="symbol">(</span><span class="type">double</span><span class="normal"> x_</span><span class="symbol">=</span><span class="number">0</span><span class="symbol">,</span><span class="normal"> </span><span class="type">double</span><span class="normal"> y_</span><span class="symbol">=</span><span class="number">0</span><span class="symbol">,</span><span class="normal"> </span><span class="type">double</span><span class="normal"> z_</span><span class="symbol">=</span><span class="number">0</span><span class="symbol">)</span><span class="cbracket">{</span><span class="normal"> x</span><span class="symbol">=</span><span class="normal">x_</span><span class="symbol">;</span><span class="normal"> y</span><span class="symbol">=</span><span class="normal">y_</span><span class="symbol">;</span><span class="normal"> z</span><span class="symbol">=</span><span class="normal">z_</span><span class="symbol">;</span><span class="normal"> </span><span class="cbracket">}</span><span class="normal"> </span>
+<li class="even"> <span class="normal">  </span><span class="usertype">Vec</span><span class="normal"> </span><span class="keyword">operator</span><span class="symbol">+(</span><span class="keyword">const</span><span class="normal"> </span><span class="usertype">Vec</span><span class="normal"> </span><span class="symbol">&amp;</span><span class="normal">b</span><span class="symbol">)</span><span class="normal"> </span><span class="keyword">const</span><span class="normal"> </span><span class="cbracket">{</span><span class="normal"> </span><span class="keyword">return</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(</span><span class="normal">x</span><span class="symbol">+</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">x</span><span class="symbol">,</span><span class="normal">y</span><span class="symbol">+</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">y</span><span class="symbol">,</span><span class="normal">z</span><span class="symbol">+</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">z</span><span class="symbol">);</span><span class="normal"> </span><span class="cbracket">}</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">  </span><span class="usertype">Vec</span><span class="normal"> </span><span class="keyword">operator</span><span class="symbol">-(</span><span class="keyword">const</span><span class="normal"> </span><span class="usertype">Vec</span><span class="normal"> </span><span class="symbol">&amp;</span><span class="normal">b</span><span class="symbol">)</span><span class="normal"> </span><span class="keyword">const</span><span class="normal"> </span><span class="cbracket">{</span><span class="normal"> </span><span class="keyword">return</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(</span><span class="normal">x</span><span class="symbol">-</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">x</span><span class="symbol">,</span><span class="normal">y</span><span class="symbol">-</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">y</span><span class="symbol">,</span><span class="normal">z</span><span class="symbol">-</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">z</span><span class="symbol">);</span><span class="normal"> </span><span class="cbracket">}</span><span class="normal"> </span>
+<li class="even"> <span class="normal">  </span><span class="usertype">Vec</span><span class="normal"> </span><span class="keyword">operator</span><span class="symbol">*(</span><span class="type">double</span><span class="normal"> b</span><span class="symbol">)</span><span class="normal"> </span><span class="keyword">const</span><span class="normal"> </span><span class="cbracket">{</span><span class="normal"> </span><span class="keyword">return</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(</span><span class="normal">x</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">,</span><span class="normal">y</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">,</span><span class="normal">z</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">);</span><span class="normal"> </span><span class="cbracket">}</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">  </span><span class="usertype">Vec</span><span class="normal"> </span><span class="function">mult</span><span class="symbol">(</span><span class="keyword">const</span><span class="normal"> </span><span class="usertype">Vec</span><span class="normal"> </span><span class="symbol">&amp;</span><span class="normal">b</span><span class="symbol">)</span><span class="normal"> </span><span class="keyword">const</span><span class="normal"> </span><span class="cbracket">{</span><span class="normal"> </span><span class="keyword">return</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(</span><span class="normal">x</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">x</span><span class="symbol">,</span><span class="normal">y</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">y</span><span class="symbol">,</span><span class="normal">z</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">z</span><span class="symbol">);</span><span class="normal"> </span><span class="cbracket">}</span><span class="normal"> </span>
+<li class="even"> <span class="normal">  Vec</span><span class="symbol">&amp;</span><span class="normal"> </span><span class="function">norm</span><span class="symbol">()</span><span class="cbracket">{</span><span class="normal"> </span><span class="keyword">return</span><span class="normal"> </span><span class="symbol">*</span><span class="keyword">this</span><span class="normal"> </span><span class="symbol">=</span><span class="normal"> </span><span class="symbol">*</span><span class="keyword">this</span><span class="normal"> </span><span class="symbol">*</span><span class="normal"> </span><span class="symbol">(</span><span class="number">1</span><span class="symbol">/</span><span class="function">sqrt</span><span class="symbol">(</span><span class="normal">x</span><span class="symbol">*</span><span class="normal">x</span><span class="symbol">+</span><span class="normal">y</span><span class="symbol">*</span><span class="normal">y</span><span class="symbol">+</span><span class="normal">z</span><span class="symbol">*</span><span class="normal">z</span><span class="symbol">));</span><span class="normal"> </span><span class="cbracket">}</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">  </span><span class="type">double</span><span class="normal"> </span><span class="function">dot</span><span class="symbol">(</span><span class="keyword">const</span><span class="normal"> </span><span class="usertype">Vec</span><span class="normal"> </span><span class="symbol">&amp;</span><span class="normal">b</span><span class="symbol">)</span><span class="normal"> </span><span class="keyword">const</span><span class="normal"> </span><span class="cbracket">{</span><span class="normal"> </span><span class="keyword">return</span><span class="normal"> x</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">x</span><span class="symbol">+</span><span class="normal">y</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">y</span><span class="symbol">+</span><span class="normal">z</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">z</span><span class="symbol">;</span><span class="normal"> </span><span class="cbracket">}</span><span class="normal"> </span><span class="comment">// cross: </span>
+<li class="even"> <span class="normal">  </span><span class="usertype">Vec</span><span class="normal"> </span><span class="keyword">operator</span><span class="symbol">%(</span><span class="normal">Vec</span><span class="symbol">&amp;</span><span class="normal">b</span><span class="symbol">)</span><span class="cbracket">{</span><span class="keyword">return</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(</span><span class="normal">y</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">z</span><span class="symbol">-</span><span class="normal">z</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">y</span><span class="symbol">,</span><span class="normal">z</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">x</span><span class="symbol">-</span><span class="normal">x</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">z</span><span class="symbol">,</span><span class="normal">x</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">y</span><span class="symbol">-</span><span class="normal">y</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">.</span><span class="normal">x</span><span class="symbol">);</span><span class="cbracket">}</span><span class="normal"> </span>
+<li class="odd"> <span class="cbracket">}</span><span class="symbol">;</span><span class="normal"> </span>
+<li class="even"> <span class="keyword">struct</span><span class="normal"> </span><span class="classname">Ray</span><span class="normal"> </span><span class="cbracket">{</span><span class="normal"> </span><span class="usertype">Vec</span><span class="normal"> o</span><span class="symbol">,</span><span class="normal"> d</span><span class="symbol">;</span><span class="normal"> </span><span class="function">Ray</span><span class="symbol">(</span><span class="usertype">Vec</span><span class="normal"> o_</span><span class="symbol">,</span><span class="normal"> </span><span class="usertype">Vec</span><span class="normal"> d_</span><span class="symbol">)</span><span class="normal"> </span><span class="symbol">:</span><span class="normal"> </span><span class="function">o</span><span class="symbol">(</span><span class="normal">o_</span><span class="symbol">),</span><span class="normal"> </span><span class="function">d</span><span class="symbol">(</span><span class="normal">d_</span><span class="symbol">)</span><span class="normal"> </span><span class="cbracket">{}</span><span class="normal"> </span><span class="cbracket">}</span><span class="symbol">;</span><span class="normal"> </span>
+<li class="odd"> <span class="keyword">enum</span><span class="normal"> Refl_t </span><span class="cbracket">{</span><span class="normal"> DIFF</span><span class="symbol">,</span><span class="normal"> SPEC</span><span class="symbol">,</span><span class="normal"> REFR </span><span class="cbracket">}</span><span class="symbol">;</span><span class="normal">  </span><span class="comment">// material types, used in radiance() </span>
+<li class="even"> <span class="keyword">struct</span><span class="normal"> </span><span class="classname">Sphere</span><span class="normal"> </span><span class="cbracket">{</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">  </span><span class="type">double</span><span class="normal"> rad</span><span class="symbol">;</span><span class="normal">       </span><span class="comment">// radius </span>
+<li class="even"> <span class="normal">  </span><span class="usertype">Vec</span><span class="normal"> p</span><span class="symbol">,</span><span class="normal"> e</span><span class="symbol">,</span><span class="normal"> c</span><span class="symbol">;</span><span class="normal">      </span><span class="comment">// position, emission, color </span>
+<li class="odd"> <span class="normal">  </span><span class="usertype">Refl_t</span><span class="normal"> refl</span><span class="symbol">;</span><span class="normal">      </span><span class="comment">// reflection type (DIFFuse, SPECular, REFRactive) </span>
+<li class="even"> <span class="normal">  </span><span class="function">Sphere</span><span class="symbol">(</span><span class="type">double</span><span class="normal"> rad_</span><span class="symbol">,</span><span class="normal"> </span><span class="usertype">Vec</span><span class="normal"> p_</span><span class="symbol">,</span><span class="normal"> </span><span class="usertype">Vec</span><span class="normal"> e_</span><span class="symbol">,</span><span class="normal"> </span><span class="usertype">Vec</span><span class="normal"> c_</span><span class="symbol">,</span><span class="normal"> </span><span class="usertype">Refl_t</span><span class="normal"> refl_</span><span class="symbol">):</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">    </span><span class="function">rad</span><span class="symbol">(</span><span class="normal">rad_</span><span class="symbol">),</span><span class="normal"> </span><span class="function">p</span><span class="symbol">(</span><span class="normal">p_</span><span class="symbol">),</span><span class="normal"> </span><span class="function">e</span><span class="symbol">(</span><span class="normal">e_</span><span class="symbol">),</span><span class="normal"> </span><span class="function">c</span><span class="symbol">(</span><span class="normal">c_</span><span class="symbol">),</span><span class="normal"> </span><span class="function">refl</span><span class="symbol">(</span><span class="normal">refl_</span><span class="symbol">)</span><span class="normal"> </span><span class="cbracket">{}</span><span class="normal"> </span>
+<li class="even"> <span class="normal">  </span><span class="type">double</span><span class="normal"> </span><span class="function">intersect</span><span class="symbol">(</span><span class="keyword">const</span><span class="normal"> </span><span class="usertype">Ray</span><span class="normal"> </span><span class="symbol">&amp;</span><span class="normal">r</span><span class="symbol">)</span><span class="normal"> </span><span class="keyword">const</span><span class="normal"> </span><span class="cbracket">{</span><span class="normal"> </span><span class="comment">// returns distance, 0 if nohit </span>
+<li class="odd"> <span class="normal">    </span><span class="usertype">Vec</span><span class="normal"> op </span><span class="symbol">=</span><span class="normal"> p</span><span class="symbol">-</span><span class="normal">r</span><span class="symbol">.</span><span class="normal">o</span><span class="symbol">;</span><span class="normal"> </span><span class="comment">// Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0 </span>
+<li class="even"> <span class="normal">    </span><span class="type">double</span><span class="normal"> t</span><span class="symbol">,</span><span class="normal"> eps</span><span class="symbol">=</span><span class="number">1e-4</span><span class="symbol">,</span><span class="normal"> b</span><span class="symbol">=</span><span class="normal">op</span><span class="symbol">.</span><span class="function">dot</span><span class="symbol">(</span><span class="normal">r</span><span class="symbol">.</span><span class="normal">d</span><span class="symbol">),</span><span class="normal"> det</span><span class="symbol">=</span><span class="normal">b</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">-</span><span class="normal">op</span><span class="symbol">.</span><span class="function">dot</span><span class="symbol">(</span><span class="normal">op</span><span class="symbol">)+</span><span class="normal">rad</span><span class="symbol">*</span><span class="normal">rad</span><span class="symbol">;</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">    </span><span class="keyword">if</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">det</span><span class="symbol">&lt;</span><span class="number">0</span><span class="symbol">)</span><span class="normal"> </span><span class="keyword">return</span><span class="normal"> </span><span class="number">0</span><span class="symbol">;</span><span class="normal"> </span><span class="keyword">else</span><span class="normal"> det</span><span class="symbol">=</span><span class="function">sqrt</span><span class="symbol">(</span><span class="normal">det</span><span class="symbol">);</span><span class="normal"> </span>
+<li class="even"> <span class="normal">    </span><span class="keyword">return</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">t</span><span class="symbol">=</span><span class="normal">b</span><span class="symbol">-</span><span class="normal">det</span><span class="symbol">)&gt;</span><span class="normal">eps </span><span class="symbol">?</span><span class="normal"> t </span><span class="symbol">:</span><span class="normal"> </span><span class="symbol">((</span><span class="normal">t</span><span class="symbol">=</span><span class="normal">b</span><span class="symbol">+</span><span class="normal">det</span><span class="symbol">)&gt;</span><span class="normal">eps </span><span class="symbol">?</span><span class="normal"> t </span><span class="symbol">:</span><span class="normal"> </span><span class="number">0</span><span class="symbol">);</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">  </span><span class="cbracket">}</span><span class="normal"> </span>
+<li class="even"> <span class="cbracket">}</span><span class="symbol">;</span><span class="normal"> </span>
+<li class="odd"> <span class="usertype">Sphere</span><span class="normal"> spheres</span><span class="symbol">[]</span><span class="normal"> </span><span class="symbol">=</span><span class="normal"> </span><span class="cbracket">{</span><span class="comment">//Scene: radius, position, emission, color, material </span>
+<li class="even"> <span class="normal">  </span><span class="function">Sphere</span><span class="symbol">(</span><span class="number">1e5</span><span class="symbol">,</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(</span><span class="normal"> </span><span class="number">1e5</span><span class="symbol">+</span><span class="number">1</span><span class="symbol">,</span><span class="number">40.8</span><span class="symbol">,</span><span class="number">81.6</span><span class="symbol">),</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(),</span><span class="function">Vec</span><span class="symbol">(</span><span class="number">.75</span><span class="symbol">,</span><span class="number">.25</span><span class="symbol">,</span><span class="number">.25</span><span class="symbol">),</span><span class="normal">DIFF</span><span class="symbol">),</span><span class="comment">//Left </span>
+<li class="odd"> <span class="normal">  </span><span class="function">Sphere</span><span class="symbol">(</span><span class="number">1e5</span><span class="symbol">,</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(-</span><span class="number">1e5</span><span class="symbol">+</span><span class="number">99</span><span class="symbol">,</span><span class="number">40.8</span><span class="symbol">,</span><span class="number">81.6</span><span class="symbol">),</span><span class="function">Vec</span><span class="symbol">(),</span><span class="function">Vec</span><span class="symbol">(</span><span class="number">.25</span><span class="symbol">,</span><span class="number">.25</span><span class="symbol">,</span><span class="number">.75</span><span class="symbol">),</span><span class="normal">DIFF</span><span class="symbol">),</span><span class="comment">//Rght </span>
+<li class="even"> <span class="normal">  </span><span class="function">Sphere</span><span class="symbol">(</span><span class="number">1e5</span><span class="symbol">,</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(</span><span class="number">50</span><span class="symbol">,</span><span class="number">40.8</span><span class="symbol">,</span><span class="normal"> </span><span class="number">1e5</span><span class="symbol">),</span><span class="normal">     </span><span class="function">Vec</span><span class="symbol">(),</span><span class="function">Vec</span><span class="symbol">(</span><span class="number">.75</span><span class="symbol">,</span><span class="number">.75</span><span class="symbol">,</span><span class="number">.75</span><span class="symbol">),</span><span class="normal">DIFF</span><span class="symbol">),</span><span class="comment">//Back </span>
+<li class="odd"> <span class="normal">  </span><span class="function">Sphere</span><span class="symbol">(</span><span class="number">1e5</span><span class="symbol">,</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(</span><span class="number">50</span><span class="symbol">,</span><span class="number">40.8</span><span class="symbol">,-</span><span class="number">1e5</span><span class="symbol">+</span><span class="number">170</span><span class="symbol">),</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(),</span><span class="function">Vec</span><span class="symbol">(),</span><span class="normal">           DIFF</span><span class="symbol">),</span><span class="comment">//Frnt </span>
+<li class="even"> <span class="normal">  </span><span class="function">Sphere</span><span class="symbol">(</span><span class="number">1e5</span><span class="symbol">,</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(</span><span class="number">50</span><span class="symbol">,</span><span class="normal"> </span><span class="number">1e5</span><span class="symbol">,</span><span class="normal"> </span><span class="number">81.6</span><span class="symbol">),</span><span class="normal">    </span><span class="function">Vec</span><span class="symbol">(),</span><span class="function">Vec</span><span class="symbol">(</span><span class="number">.75</span><span class="symbol">,</span><span class="number">.75</span><span class="symbol">,</span><span class="number">.75</span><span class="symbol">),</span><span class="normal">DIFF</span><span class="symbol">),</span><span class="comment">//Botm </span>
+<li class="odd"> <span class="normal">  </span><span class="function">Sphere</span><span class="symbol">(</span><span class="number">1e5</span><span class="symbol">,</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(</span><span class="number">50</span><span class="symbol">,-</span><span class="number">1e5</span><span class="symbol">+</span><span class="number">81.6</span><span class="symbol">,</span><span class="number">81.6</span><span class="symbol">),</span><span class="function">Vec</span><span class="symbol">(),</span><span class="function">Vec</span><span class="symbol">(</span><span class="number">.75</span><span class="symbol">,</span><span class="number">.75</span><span class="symbol">,</span><span class="number">.75</span><span class="symbol">),</span><span class="normal">DIFF</span><span class="symbol">),</span><span class="comment">//Top </span>
+<li class="even"> <span class="normal">  </span><span class="function">Sphere</span><span class="symbol">(</span><span class="number">16.5</span><span class="symbol">,</span><span class="function">Vec</span><span class="symbol">(</span><span class="number">27</span><span class="symbol">,</span><span class="number">16.5</span><span class="symbol">,</span><span class="number">47</span><span class="symbol">),</span><span class="normal">       </span><span class="function">Vec</span><span class="symbol">(),</span><span class="function">Vec</span><span class="symbol">(</span><span class="number">1</span><span class="symbol">,</span><span class="number">1</span><span class="symbol">,</span><span class="number">1</span><span class="symbol">)*</span><span class="number">.999</span><span class="symbol">,</span><span class="normal"> SPEC</span><span class="symbol">),</span><span class="comment">//Mirr </span>
+<li class="odd"> <span class="normal">  </span><span class="function">Sphere</span><span class="symbol">(</span><span class="number">16.5</span><span class="symbol">,</span><span class="function">Vec</span><span class="symbol">(</span><span class="number">73</span><span class="symbol">,</span><span class="number">16.5</span><span class="symbol">,</span><span class="number">78</span><span class="symbol">),</span><span class="normal">       </span><span class="function">Vec</span><span class="symbol">(),</span><span class="function">Vec</span><span class="symbol">(</span><span class="number">1</span><span class="symbol">,</span><span class="number">1</span><span class="symbol">,</span><span class="number">1</span><span class="symbol">)*</span><span class="number">.999</span><span class="symbol">,</span><span class="normal"> REFR</span><span class="symbol">),</span><span class="comment">//Glas </span>
+<li class="even"> <span class="normal">  </span><span class="function">Sphere</span><span class="symbol">(</span><span class="number">600</span><span class="symbol">,</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(</span><span class="number">50</span><span class="symbol">,</span><span class="number">681.6</span><span class="symbol">-</span><span class="number">.27</span><span class="symbol">,</span><span class="number">81.6</span><span class="symbol">),</span><span class="function">Vec</span><span class="symbol">(</span><span class="number">12</span><span class="symbol">,</span><span class="number">12</span><span class="symbol">,</span><span class="number">12</span><span class="symbol">),</span><span class="normal">  </span><span class="function">Vec</span><span class="symbol">(),</span><span class="normal"> DIFF</span><span class="symbol">)</span><span class="normal"> </span><span class="comment">//Lite </span>
+<li class="odd"> <span class="cbracket">}</span><span class="symbol">;</span><span class="normal"> </span>
+<li class="even"> <span class="keyword">inline</span><span class="normal"> </span><span class="type">double</span><span class="normal"> </span><span class="function">clamp</span><span class="symbol">(</span><span class="type">double</span><span class="normal"> x</span><span class="symbol">)</span><span class="cbracket">{</span><span class="normal"> </span><span class="keyword">return</span><span class="normal"> x</span><span class="symbol">&lt;</span><span class="number">0</span><span class="normal"> </span><span class="symbol">?</span><span class="normal"> </span><span class="number">0</span><span class="normal"> </span><span class="symbol">:</span><span class="normal"> x</span><span class="symbol">&gt;</span><span class="number">1</span><span class="normal"> </span><span class="symbol">?</span><span class="normal"> </span><span class="number">1</span><span class="normal"> </span><span class="symbol">:</span><span class="normal"> x</span><span class="symbol">;</span><span class="normal"> </span><span class="cbracket">}</span><span class="normal"> </span>
+<li class="odd"> <span class="keyword">inline</span><span class="normal"> </span><span class="type">int</span><span class="normal"> </span><span class="function">toInt</span><span class="symbol">(</span><span class="type">double</span><span class="normal"> x</span><span class="symbol">)</span><span class="cbracket">{</span><span class="normal"> </span><span class="keyword">return</span><span class="normal"> </span><span class="type">int</span><span class="symbol">(</span><span class="function">pow</span><span class="symbol">(</span><span class="function">clamp</span><span class="symbol">(</span><span class="normal">x</span><span class="symbol">),</span><span class="number">1</span><span class="symbol">/</span><span class="number">2.2</span><span class="symbol">)*</span><span class="number">255</span><span class="symbol">+</span><span class="number">.5</span><span class="symbol">);</span><span class="normal"> </span><span class="cbracket">}</span><span class="normal"> </span>
+<li class="even"> <span class="keyword">inline</span><span class="normal"> </span><span class="type">bool</span><span class="normal"> </span><span class="function">intersect</span><span class="symbol">(</span><span class="keyword">const</span><span class="normal"> </span><span class="usertype">Ray</span><span class="normal"> </span><span class="symbol">&amp;</span><span class="normal">r</span><span class="symbol">,</span><span class="normal"> </span><span class="type">double</span><span class="normal"> </span><span class="symbol">&amp;</span><span class="normal">t</span><span class="symbol">,</span><span class="normal"> </span><span class="type">int</span><span class="normal"> </span><span class="symbol">&amp;</span><span class="normal">id</span><span class="symbol">)</span><span class="cbracket">{</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">  </span><span class="type">double</span><span class="normal"> n</span><span class="symbol">=</span><span class="keyword">sizeof</span><span class="symbol">(</span><span class="normal">spheres</span><span class="symbol">)/</span><span class="keyword">sizeof</span><span class="symbol">(</span><span class="normal">Sphere</span><span class="symbol">),</span><span class="normal"> d</span><span class="symbol">,</span><span class="normal"> inf</span><span class="symbol">=</span><span class="normal">t</span><span class="symbol">=</span><span class="number">1e20</span><span class="symbol">;</span><span class="normal"> </span>
+<li class="even"> <span class="normal">  </span><span class="keyword">for</span><span class="symbol">(</span><span class="type">int</span><span class="normal"> i</span><span class="symbol">=</span><span class="type">int</span><span class="symbol">(</span><span class="normal">n</span><span class="symbol">);</span><span class="normal">i</span><span class="symbol">--;)</span><span class="normal"> </span><span class="keyword">if</span><span class="symbol">((</span><span class="normal">d</span><span class="symbol">=</span><span class="normal">spheres</span><span class="symbol">[</span><span class="normal">i</span><span class="symbol">].</span><span class="function">intersect</span><span class="symbol">(</span><span class="normal">r</span><span class="symbol">))&amp;&amp;</span><span class="normal">d</span><span class="symbol">&lt;</span><span class="normal">t</span><span class="symbol">)</span><span class="cbracket">{</span><span class="normal">t</span><span class="symbol">=</span><span class="normal">d</span><span class="symbol">;</span><span class="normal">id</span><span class="symbol">=</span><span class="normal">i</span><span class="symbol">;</span><span class="cbracket">}</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">  </span><span class="keyword">return</span><span class="normal"> t</span><span class="symbol">&lt;</span><span class="normal">inf</span><span class="symbol">;</span><span class="normal"> </span>
+<li class="even"> <span class="cbracket">}</span><span class="normal"> </span>
+<li class="odd"> <span class="usertype">Vec</span><span class="normal"> </span><span class="function">radiance</span><span class="symbol">(</span><span class="keyword">const</span><span class="normal"> </span><span class="usertype">Ray</span><span class="normal"> </span><span class="symbol">&amp;</span><span class="normal">r</span><span class="symbol">,</span><span class="normal"> </span><span class="type">int</span><span class="normal"> depth</span><span class="symbol">,</span><span class="normal"> </span><span class="type">unsigned</span><span class="normal"> </span><span class="type">short</span><span class="normal"> </span><span class="symbol">*</span><span class="normal">Xi</span><span class="symbol">)</span><span class="cbracket">{</span><span class="normal"> </span>
+<li class="even"> <span class="normal">  </span><span class="type">double</span><span class="normal"> t</span><span class="symbol">;</span><span class="normal">                               </span><span class="comment">// distance to intersection </span>
+<li class="odd"> <span class="normal">  </span><span class="type">int</span><span class="normal"> id</span><span class="symbol">=</span><span class="number">0</span><span class="symbol">;</span><span class="normal">                               </span><span class="comment">// id of intersected object </span>
+<li class="even"> <span class="normal">  </span><span class="keyword">if</span><span class="normal"> </span><span class="symbol">(!</span><span class="function">intersect</span><span class="symbol">(</span><span class="normal">r</span><span class="symbol">,</span><span class="normal"> t</span><span class="symbol">,</span><span class="normal"> id</span><span class="symbol">))</span><span class="normal"> </span><span class="keyword">return</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">();</span><span class="normal"> </span><span class="comment">// if miss, return black </span>
+<li class="odd"> <span class="normal">  </span><span class="keyword">const</span><span class="normal"> </span><span class="usertype">Sphere</span><span class="normal"> </span><span class="symbol">&amp;</span><span class="normal">obj </span><span class="symbol">=</span><span class="normal"> spheres</span><span class="symbol">[</span><span class="normal">id</span><span class="symbol">];</span><span class="normal">        </span><span class="comment">// the hit object </span>
+<li class="even"> <span class="normal">  </span><span class="usertype">Vec</span><span class="normal"> x</span><span class="symbol">=</span><span class="normal">r</span><span class="symbol">.</span><span class="normal">o</span><span class="symbol">+</span><span class="normal">r</span><span class="symbol">.</span><span class="normal">d</span><span class="symbol">*</span><span class="normal">t</span><span class="symbol">,</span><span class="normal"> n</span><span class="symbol">=(</span><span class="normal">x</span><span class="symbol">-</span><span class="normal">obj</span><span class="symbol">.</span><span class="normal">p</span><span class="symbol">).</span><span class="function">norm</span><span class="symbol">(),</span><span class="normal"> nl</span><span class="symbol">=</span><span class="normal">n</span><span class="symbol">.</span><span class="function">dot</span><span class="symbol">(</span><span class="normal">r</span><span class="symbol">.</span><span class="normal">d</span><span class="symbol">)&lt;</span><span class="number">0</span><span class="symbol">?</span><span class="normal">n</span><span class="symbol">:</span><span class="normal">n</span><span class="symbol">*-</span><span class="number">1</span><span class="symbol">,</span><span class="normal"> f</span><span class="symbol">=</span><span class="normal">obj</span><span class="symbol">.</span><span class="normal">c</span><span class="symbol">;</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">  </span><span class="type">double</span><span class="normal"> p </span><span class="symbol">=</span><span class="normal"> f</span><span class="symbol">.</span><span class="normal">x</span><span class="symbol">&gt;</span><span class="normal">f</span><span class="symbol">.</span><span class="normal">y </span><span class="symbol">&amp;&amp;</span><span class="normal"> f</span><span class="symbol">.</span><span class="normal">x</span><span class="symbol">&gt;</span><span class="normal">f</span><span class="symbol">.</span><span class="normal">z </span><span class="symbol">?</span><span class="normal"> f</span><span class="symbol">.</span><span class="normal">x </span><span class="symbol">:</span><span class="normal"> f</span><span class="symbol">.</span><span class="normal">y</span><span class="symbol">&gt;</span><span class="normal">f</span><span class="symbol">.</span><span class="normal">z </span><span class="symbol">?</span><span class="normal"> f</span><span class="symbol">.</span><span class="normal">y </span><span class="symbol">:</span><span class="normal"> f</span><span class="symbol">.</span><span class="normal">z</span><span class="symbol">;</span><span class="normal"> </span><span class="comment">// max refl </span>
+<li class="even"> <span class="normal">  </span><span class="keyword">if</span><span class="normal"> </span><span class="symbol">(++</span><span class="normal">depth</span><span class="symbol">&gt;</span><span class="number">5</span><span class="symbol">)</span><span class="normal"> </span><span class="keyword">if</span><span class="normal"> </span><span class="symbol">(</span><span class="function">erand48</span><span class="symbol">(</span><span class="normal">Xi</span><span class="symbol">)&lt;</span><span class="normal">p</span><span class="symbol">)</span><span class="normal"> f</span><span class="symbol">=</span><span class="normal">f</span><span class="symbol">*(</span><span class="number">1</span><span class="symbol">/</span><span class="normal">p</span><span class="symbol">);</span><span class="normal"> </span><span class="keyword">else</span><span class="normal"> </span><span class="keyword">return</span><span class="normal"> obj</span><span class="symbol">.</span><span class="normal">e</span><span class="symbol">;</span><span class="normal"> </span><span class="comment">//R.R. </span>
+<li class="odd"> <span class="normal">  </span><span class="keyword">if</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">obj</span><span class="symbol">.</span><span class="normal">refl </span><span class="symbol">==</span><span class="normal"> DIFF</span><span class="symbol">)</span><span class="cbracket">{</span><span class="normal">                  </span><span class="comment">// Ideal DIFFUSE reflection </span>
+<li class="even"> <span class="normal">    </span><span class="type">double</span><span class="normal"> r1</span><span class="symbol">=</span><span class="number">2</span><span class="symbol">*</span><span class="normal">M_PI</span><span class="symbol">*</span><span class="function">erand48</span><span class="symbol">(</span><span class="normal">Xi</span><span class="symbol">),</span><span class="normal"> r2</span><span class="symbol">=</span><span class="function">erand48</span><span class="symbol">(</span><span class="normal">Xi</span><span class="symbol">),</span><span class="normal"> r2s</span><span class="symbol">=</span><span class="function">sqrt</span><span class="symbol">(</span><span class="normal">r2</span><span class="symbol">);</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">    </span><span class="usertype">Vec</span><span class="normal"> w</span><span class="symbol">=</span><span class="normal">nl</span><span class="symbol">,</span><span class="normal"> u</span><span class="symbol">=((</span><span class="function">fabs</span><span class="symbol">(</span><span class="normal">w</span><span class="symbol">.</span><span class="normal">x</span><span class="symbol">)&gt;</span><span class="number">.1</span><span class="symbol">?</span><span class="function">Vec</span><span class="symbol">(</span><span class="number">0</span><span class="symbol">,</span><span class="number">1</span><span class="symbol">):</span><span class="function">Vec</span><span class="symbol">(</span><span class="number">1</span><span class="symbol">))%</span><span class="normal">w</span><span class="symbol">).</span><span class="function">norm</span><span class="symbol">(),</span><span class="normal"> v</span><span class="symbol">=</span><span class="normal">w</span><span class="symbol">%</span><span class="normal">u</span><span class="symbol">;</span><span class="normal"> </span>
+<li class="even"> <span class="normal">    </span><span class="usertype">Vec</span><span class="normal"> d </span><span class="symbol">=</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">u</span><span class="symbol">*</span><span class="function">cos</span><span class="symbol">(</span><span class="normal">r1</span><span class="symbol">)*</span><span class="normal">r2s </span><span class="symbol">+</span><span class="normal"> v</span><span class="symbol">*</span><span class="function">sin</span><span class="symbol">(</span><span class="normal">r1</span><span class="symbol">)*</span><span class="normal">r2s </span><span class="symbol">+</span><span class="normal"> w</span><span class="symbol">*</span><span class="function">sqrt</span><span class="symbol">(</span><span class="number">1</span><span class="symbol">-</span><span class="normal">r2</span><span class="symbol">)).</span><span class="function">norm</span><span class="symbol">();</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">    </span><span class="keyword">return</span><span class="normal"> obj</span><span class="symbol">.</span><span class="normal">e </span><span class="symbol">+</span><span class="normal"> f</span><span class="symbol">.</span><span class="function">mult</span><span class="symbol">(</span><span class="function">radiance</span><span class="symbol">(</span><span class="function">Ray</span><span class="symbol">(</span><span class="normal">x</span><span class="symbol">,</span><span class="normal">d</span><span class="symbol">),</span><span class="normal">depth</span><span class="symbol">,</span><span class="normal">Xi</span><span class="symbol">));</span><span class="normal"> </span>
+<li class="even"> <span class="normal">  </span><span class="cbracket">}</span><span class="normal"> </span><span class="keyword">else</span><span class="normal"> </span><span class="keyword">if</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">obj</span><span class="symbol">.</span><span class="normal">refl </span><span class="symbol">==</span><span class="normal"> SPEC</span><span class="symbol">)</span><span class="normal">            </span><span class="comment">// Ideal SPECULAR reflection </span>
+<li class="odd"> <span class="normal">    </span><span class="keyword">return</span><span class="normal"> obj</span><span class="symbol">.</span><span class="normal">e </span><span class="symbol">+</span><span class="normal"> f</span><span class="symbol">.</span><span class="function">mult</span><span class="symbol">(</span><span class="function">radiance</span><span class="symbol">(</span><span class="function">Ray</span><span class="symbol">(</span><span class="normal">x</span><span class="symbol">,</span><span class="normal">r</span><span class="symbol">.</span><span class="normal">d</span><span class="symbol">-</span><span class="normal">n</span><span class="symbol">*</span><span class="number">2</span><span class="symbol">*</span><span class="normal">n</span><span class="symbol">.</span><span class="function">dot</span><span class="symbol">(</span><span class="normal">r</span><span class="symbol">.</span><span class="normal">d</span><span class="symbol">)),</span><span class="normal">depth</span><span class="symbol">,</span><span class="normal">Xi</span><span class="symbol">));</span><span class="normal"> </span>
+<li class="even"> <span class="normal">  </span><span class="usertype">Ray</span><span class="normal"> </span><span class="function">reflRay</span><span class="symbol">(</span><span class="normal">x</span><span class="symbol">,</span><span class="normal"> r</span><span class="symbol">.</span><span class="normal">d</span><span class="symbol">-</span><span class="normal">n</span><span class="symbol">*</span><span class="number">2</span><span class="symbol">*</span><span class="normal">n</span><span class="symbol">.</span><span class="function">dot</span><span class="symbol">(</span><span class="normal">r</span><span class="symbol">.</span><span class="normal">d</span><span class="symbol">));</span><span class="normal">     </span><span class="comment">// Ideal dielectric REFRACTION </span>
+<li class="odd"> <span class="normal">  </span><span class="type">bool</span><span class="normal"> into </span><span class="symbol">=</span><span class="normal"> n</span><span class="symbol">.</span><span class="function">dot</span><span class="symbol">(</span><span class="normal">nl</span><span class="symbol">)&gt;</span><span class="number">0</span><span class="symbol">;</span><span class="normal">                </span><span class="comment">// Ray from outside going in? </span>
+<li class="even"> <span class="normal">  </span><span class="type">double</span><span class="normal"> nc</span><span class="symbol">=</span><span class="number">1</span><span class="symbol">,</span><span class="normal"> nt</span><span class="symbol">=</span><span class="number">1.5</span><span class="symbol">,</span><span class="normal"> nnt</span><span class="symbol">=</span><span class="normal">into</span><span class="symbol">?</span><span class="normal">nc</span><span class="symbol">/</span><span class="normal">nt</span><span class="symbol">:</span><span class="normal">nt</span><span class="symbol">/</span><span class="normal">nc</span><span class="symbol">,</span><span class="normal"> ddn</span><span class="symbol">=</span><span class="normal">r</span><span class="symbol">.</span><span class="normal">d</span><span class="symbol">.</span><span class="function">dot</span><span class="symbol">(</span><span class="normal">nl</span><span class="symbol">),</span><span class="normal"> cos2t</span><span class="symbol">;</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">  </span><span class="keyword">if</span><span class="normal"> </span><span class="symbol">((</span><span class="normal">cos2t</span><span class="symbol">=</span><span class="number">1</span><span class="symbol">-</span><span class="normal">nnt</span><span class="symbol">*</span><span class="normal">nnt</span><span class="symbol">*(</span><span class="number">1</span><span class="symbol">-</span><span class="normal">ddn</span><span class="symbol">*</span><span class="normal">ddn</span><span class="symbol">))&lt;</span><span class="number">0</span><span class="symbol">)</span><span class="normal">    </span><span class="comment">// Total internal reflection </span>
+<li class="even"> <span class="normal">    </span><span class="keyword">return</span><span class="normal"> obj</span><span class="symbol">.</span><span class="normal">e </span><span class="symbol">+</span><span class="normal"> f</span><span class="symbol">.</span><span class="function">mult</span><span class="symbol">(</span><span class="function">radiance</span><span class="symbol">(</span><span class="normal">reflRay</span><span class="symbol">,</span><span class="normal">depth</span><span class="symbol">,</span><span class="normal">Xi</span><span class="symbol">));</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">  </span><span class="usertype">Vec</span><span class="normal"> tdir </span><span class="symbol">=</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">r</span><span class="symbol">.</span><span class="normal">d</span><span class="symbol">*</span><span class="normal">nnt </span><span class="symbol">-</span><span class="normal"> n</span><span class="symbol">*((</span><span class="normal">into</span><span class="symbol">?</span><span class="number">1</span><span class="symbol">:-</span><span class="number">1</span><span class="symbol">)*(</span><span class="normal">ddn</span><span class="symbol">*</span><span class="normal">nnt</span><span class="symbol">+</span><span class="function">sqrt</span><span class="symbol">(</span><span class="normal">cos2t</span><span class="symbol">)))).</span><span class="function">norm</span><span class="symbol">();</span><span class="normal"> </span>
+<li class="even"> <span class="normal">  </span><span class="type">double</span><span class="normal"> a</span><span class="symbol">=</span><span class="normal">nt</span><span class="symbol">-</span><span class="normal">nc</span><span class="symbol">,</span><span class="normal"> b</span><span class="symbol">=</span><span class="normal">nt</span><span class="symbol">+</span><span class="normal">nc</span><span class="symbol">,</span><span class="normal"> R0</span><span class="symbol">=</span><span class="normal">a</span><span class="symbol">*</span><span class="normal">a</span><span class="symbol">/(</span><span class="normal">b</span><span class="symbol">*</span><span class="normal">b</span><span class="symbol">),</span><span class="normal"> c </span><span class="symbol">=</span><span class="normal"> </span><span class="number">1</span><span class="symbol">-(</span><span class="normal">into</span><span class="symbol">?-</span><span class="normal">ddn</span><span class="symbol">:</span><span class="normal">tdir</span><span class="symbol">.</span><span class="function">dot</span><span class="symbol">(</span><span class="normal">n</span><span class="symbol">));</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">  </span><span class="type">double</span><span class="normal"> Re</span><span class="symbol">=</span><span class="normal">R0</span><span class="symbol">+(</span><span class="number">1</span><span class="symbol">-</span><span class="normal">R0</span><span class="symbol">)*</span><span class="normal">c</span><span class="symbol">*</span><span class="normal">c</span><span class="symbol">*</span><span class="normal">c</span><span class="symbol">*</span><span class="normal">c</span><span class="symbol">*</span><span class="normal">c</span><span class="symbol">,</span><span class="normal">Tr</span><span class="symbol">=</span><span class="number">1</span><span class="symbol">-</span><span class="normal">Re</span><span class="symbol">,</span><span class="normal">P</span><span class="symbol">=</span><span class="number">.25</span><span class="symbol">+</span><span class="number">.5</span><span class="symbol">*</span><span class="normal">Re</span><span class="symbol">,</span><span class="normal">RP</span><span class="symbol">=</span><span class="normal">Re</span><span class="symbol">/</span><span class="normal">P</span><span class="symbol">,</span><span class="normal">TP</span><span class="symbol">=</span><span class="normal">Tr</span><span class="symbol">/(</span><span class="number">1</span><span class="symbol">-</span><span class="normal">P</span><span class="symbol">);</span><span class="normal"> </span>
+<li class="even"> <span class="normal">  </span><span class="keyword">return</span><span class="normal"> obj</span><span class="symbol">.</span><span class="normal">e </span><span class="symbol">+</span><span class="normal"> f</span><span class="symbol">.</span><span class="function">mult</span><span class="symbol">(</span><span class="normal">depth</span><span class="symbol">&gt;</span><span class="number">2</span><span class="normal"> </span><span class="symbol">?</span><span class="normal"> </span><span class="symbol">(</span><span class="function">erand48</span><span class="symbol">(</span><span class="normal">Xi</span><span class="symbol">)&lt;</span><span class="normal">P </span><span class="symbol">?</span><span class="normal">   </span><span class="comment">// Russian roulette </span>
+<li class="odd"> <span class="normal">    </span><span class="function">radiance</span><span class="symbol">(</span><span class="normal">reflRay</span><span class="symbol">,</span><span class="normal">depth</span><span class="symbol">,</span><span class="normal">Xi</span><span class="symbol">)*</span><span class="normal">RP</span><span class="symbol">:</span><span class="function">radiance</span><span class="symbol">(</span><span class="function">Ray</span><span class="symbol">(</span><span class="normal">x</span><span class="symbol">,</span><span class="normal">tdir</span><span class="symbol">),</span><span class="normal">depth</span><span class="symbol">,</span><span class="normal">Xi</span><span class="symbol">)*</span><span class="normal">TP</span><span class="symbol">)</span><span class="normal"> </span><span class="symbol">:</span><span class="normal"> </span>
+<li class="even"> <span class="normal">    </span><span class="function">radiance</span><span class="symbol">(</span><span class="normal">reflRay</span><span class="symbol">,</span><span class="normal">depth</span><span class="symbol">,</span><span class="normal">Xi</span><span class="symbol">)*</span><span class="normal">Re</span><span class="symbol">+</span><span class="function">radiance</span><span class="symbol">(</span><span class="function">Ray</span><span class="symbol">(</span><span class="normal">x</span><span class="symbol">,</span><span class="normal">tdir</span><span class="symbol">),</span><span class="normal">depth</span><span class="symbol">,</span><span class="normal">Xi</span><span class="symbol">)*</span><span class="normal">Tr</span><span class="symbol">);</span><span class="normal"> </span>
+<li class="odd"> <span class="cbracket">}</span><span class="normal"> </span>
+<li class="even"> <span class="type">int</span><span class="normal"> </span><span class="function">main</span><span class="symbol">(</span><span class="type">int</span><span class="normal"> argc</span><span class="symbol">,</span><span class="normal"> </span><span class="type">char</span><span class="normal"> </span><span class="symbol">*</span><span class="normal">argv</span><span class="symbol">[])</span><span class="cbracket">{</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">  </span><span class="type">int</span><span class="normal"> w</span><span class="symbol">=</span><span class="number">1024</span><span class="symbol">,</span><span class="normal"> h</span><span class="symbol">=</span><span class="number">768</span><span class="symbol">,</span><span class="normal"> samps </span><span class="symbol">=</span><span class="normal"> argc</span><span class="symbol">==</span><span class="number">2</span><span class="normal"> </span><span class="symbol">?</span><span class="normal"> </span><span class="function">atoi</span><span class="symbol">(</span><span class="normal">argv</span><span class="symbol">[</span><span class="number">1</span><span class="symbol">])/</span><span class="number">4</span><span class="normal"> </span><span class="symbol">:</span><span class="normal"> </span><span class="number">1</span><span class="symbol">;</span><span class="normal"> </span><span class="comment">// # samples </span>
+<li class="even"> <span class="normal">  </span><span class="usertype">Ray</span><span class="normal"> </span><span class="function">cam</span><span class="symbol">(</span><span class="function">Vec</span><span class="symbol">(</span><span class="number">50</span><span class="symbol">,</span><span class="number">52</span><span class="symbol">,</span><span class="number">295.6</span><span class="symbol">),</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(</span><span class="number">0</span><span class="symbol">,-</span><span class="number">0.042612</span><span class="symbol">,-</span><span class="number">1</span><span class="symbol">).</span><span class="function">norm</span><span class="symbol">());</span><span class="normal"> </span><span class="comment">// cam pos, dir </span>
+<li class="odd"> <span class="normal">  </span><span class="usertype">Vec</span><span class="normal"> cx</span><span class="symbol">=</span><span class="function">Vec</span><span class="symbol">(</span><span class="normal">w</span><span class="symbol">*</span><span class="number">.5135</span><span class="symbol">/</span><span class="normal">h</span><span class="symbol">),</span><span class="normal"> cy</span><span class="symbol">=(</span><span class="normal">cx</span><span class="symbol">%</span><span class="normal">cam</span><span class="symbol">.</span><span class="normal">d</span><span class="symbol">).</span><span class="function">norm</span><span class="symbol">()*</span><span class="number">.5135</span><span class="symbol">,</span><span class="normal"> r</span><span class="symbol">,</span><span class="normal"> </span><span class="symbol">*</span><span class="normal">c</span><span class="symbol">=</span><span class="keyword">new</span><span class="normal"> Vec</span><span class="symbol">[</span><span class="normal">w</span><span class="symbol">*</span><span class="normal">h</span><span class="symbol">];</span><span class="normal"> </span>
+<li class="even"> <span class="preproc">#pragma omp parallel for schedule(dynamic, 1) private(r)       // OpenMP </span>
+<li class="odd"> <span class="normal">  </span><span class="keyword">for</span><span class="normal"> </span><span class="symbol">(</span><span class="type">int</span><span class="normal"> y</span><span class="symbol">=</span><span class="number">0</span><span class="symbol">;</span><span class="normal"> y</span><span class="symbol">&lt;</span><span class="normal">h</span><span class="symbol">;</span><span class="normal"> y</span><span class="symbol">++)</span><span class="cbracket">{</span><span class="normal">                       </span><span class="comment">// Loop over image rows </span>
+<li class="even"> <span class="normal">    </span><span class="function">fprintf</span><span class="symbol">(</span><span class="normal">stderr</span><span class="symbol">,</span><span class="string">"</span><span class="specialchar">\r</span><span class="string">Rendering (%d spp) %5.2f%%"</span><span class="symbol">,</span><span class="normal">samps</span><span class="symbol">*</span><span class="number">4</span><span class="symbol">,</span><span class="number">100</span><span class="symbol">.*</span><span class="normal">y</span><span class="symbol">/(</span><span class="normal">h</span><span class="symbol">-</span><span class="number">1</span><span class="symbol">));</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">    </span><span class="keyword">for</span><span class="normal"> </span><span class="symbol">(</span><span class="type">unsigned</span><span class="normal"> </span><span class="type">short</span><span class="normal"> x</span><span class="symbol">=</span><span class="number">0</span><span class="symbol">,</span><span class="normal"> Xi</span><span class="symbol">[</span><span class="number">3</span><span class="symbol">]=</span><span class="cbracket">{</span><span class="number">0</span><span class="symbol">,</span><span class="number">0</span><span class="symbol">,</span><span class="normal">y</span><span class="symbol">*</span><span class="normal">y</span><span class="symbol">*</span><span class="normal">y</span><span class="cbracket">}</span><span class="symbol">;</span><span class="normal"> x</span><span class="symbol">&lt;</span><span class="normal">w</span><span class="symbol">;</span><span class="normal"> x</span><span class="symbol">++)</span><span class="normal">   </span><span class="comment">// Loop cols </span>
+<li class="even"> <span class="normal">      </span><span class="keyword">for</span><span class="normal"> </span><span class="symbol">(</span><span class="type">int</span><span class="normal"> sy</span><span class="symbol">=</span><span class="number">0</span><span class="symbol">,</span><span class="normal"> i</span><span class="symbol">=(</span><span class="normal">h</span><span class="symbol">-</span><span class="normal">y</span><span class="symbol">-</span><span class="number">1</span><span class="symbol">)*</span><span class="normal">w</span><span class="symbol">+</span><span class="normal">x</span><span class="symbol">;</span><span class="normal"> sy</span><span class="symbol">&lt;</span><span class="number">2</span><span class="symbol">;</span><span class="normal"> sy</span><span class="symbol">++)</span><span class="normal">     </span><span class="comment">// 2x2 subpixel rows </span>
+<li class="odd"> <span class="normal">        </span><span class="keyword">for</span><span class="normal"> </span><span class="symbol">(</span><span class="type">int</span><span class="normal"> sx</span><span class="symbol">=</span><span class="number">0</span><span class="symbol">;</span><span class="normal"> sx</span><span class="symbol">&lt;</span><span class="number">2</span><span class="symbol">;</span><span class="normal"> sx</span><span class="symbol">++,</span><span class="normal"> r</span><span class="symbol">=</span><span class="function">Vec</span><span class="symbol">())</span><span class="cbracket">{</span><span class="normal">        </span><span class="comment">// 2x2 subpixel cols </span>
+<li class="even"> <span class="normal">          </span><span class="keyword">for</span><span class="normal"> </span><span class="symbol">(</span><span class="type">int</span><span class="normal"> s</span><span class="symbol">=</span><span class="number">0</span><span class="symbol">;</span><span class="normal"> s</span><span class="symbol">&lt;</span><span class="normal">samps</span><span class="symbol">;</span><span class="normal"> s</span><span class="symbol">++)</span><span class="cbracket">{</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">            </span><span class="type">double</span><span class="normal"> r1</span><span class="symbol">=</span><span class="number">2</span><span class="symbol">*</span><span class="function">erand48</span><span class="symbol">(</span><span class="normal">Xi</span><span class="symbol">),</span><span class="normal"> dx</span><span class="symbol">=</span><span class="normal">r1</span><span class="symbol">&lt;</span><span class="number">1</span><span class="normal"> </span><span class="symbol">?</span><span class="normal"> </span><span class="function">sqrt</span><span class="symbol">(</span><span class="normal">r1</span><span class="symbol">)-</span><span class="number">1</span><span class="symbol">:</span><span class="normal"> </span><span class="number">1</span><span class="symbol">-</span><span class="function">sqrt</span><span class="symbol">(</span><span class="number">2</span><span class="symbol">-</span><span class="normal">r1</span><span class="symbol">);</span><span class="normal"> </span>
+<li class="even"> <span class="normal">            </span><span class="type">double</span><span class="normal"> r2</span><span class="symbol">=</span><span class="number">2</span><span class="symbol">*</span><span class="function">erand48</span><span class="symbol">(</span><span class="normal">Xi</span><span class="symbol">),</span><span class="normal"> dy</span><span class="symbol">=</span><span class="normal">r2</span><span class="symbol">&lt;</span><span class="number">1</span><span class="normal"> </span><span class="symbol">?</span><span class="normal"> </span><span class="function">sqrt</span><span class="symbol">(</span><span class="normal">r2</span><span class="symbol">)-</span><span class="number">1</span><span class="symbol">:</span><span class="normal"> </span><span class="number">1</span><span class="symbol">-</span><span class="function">sqrt</span><span class="symbol">(</span><span class="number">2</span><span class="symbol">-</span><span class="normal">r2</span><span class="symbol">);</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">            </span><span class="usertype">Vec</span><span class="normal"> d </span><span class="symbol">=</span><span class="normal"> cx</span><span class="symbol">*(</span><span class="normal"> </span><span class="symbol">(</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">sx</span><span class="symbol">+</span><span class="number">.5</span><span class="normal"> </span><span class="symbol">+</span><span class="normal"> dx</span><span class="symbol">)/</span><span class="number">2</span><span class="normal"> </span><span class="symbol">+</span><span class="normal"> x</span><span class="symbol">)/</span><span class="normal">w </span><span class="symbol">-</span><span class="normal"> </span><span class="symbol"></span><span class="number">.5</span><span class="symbol">)</span><span class="normal"> </span><span class="symbol">+</span><span class="normal"> </span>
+<li class="even"> <span class="normal">                    cy</span><span class="symbol">*(</span><span class="normal"> </span><span class="symbol">(</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">sy</span><span class="symbol">+</span><span class="number">.5</span><span class="normal"> </span><span class="symbol">+</span><span class="normal"> dy</span><span class="symbol">)/</span><span class="number">2</span><span class="normal"> </span><span class="symbol">+</span><span class="normal"> y</span><span class="symbol">)/</span><span class="normal">h </span><span class="symbol">-</span><span class="normal"> </span><span class="symbol"></span><span class="number">.5</span><span class="symbol">)</span><span class="normal"> </span><span class="symbol">+</span><span class="normal"> cam</span><span class="symbol">.</span><span class="normal">d</span><span class="symbol">;</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">            r </span><span class="symbol">=</span><span class="normal"> r </span><span class="symbol">+</span><span class="normal"> </span><span class="function">radiance</span><span class="symbol">(</span><span class="function">Ray</span><span class="symbol">(</span><span class="normal">cam</span><span class="symbol">.</span><span class="normal">o</span><span class="symbol">+</span><span class="normal">d</span><span class="symbol">*</span><span class="number">140</span><span class="symbol">,</span><span class="normal">d</span><span class="symbol">.</span><span class="function">norm</span><span class="symbol">()),</span><span class="number">0</span><span class="symbol">,</span><span class="normal">Xi</span><span class="symbol">)*(</span><span class="number">1</span><span class="symbol">./</span><span class="normal">samps</span><span class="symbol">);</span><span class="normal"> </span>
+<li class="even"> <span class="normal">          </span><span class="cbracket">}</span><span class="normal"> </span><span class="comment">// Camera rays are pushed ^^^^^ forward to start in interior </span>
+<li class="odd"> <span class="normal">          c</span><span class="symbol">[</span><span class="normal">i</span><span class="symbol">]</span><span class="normal"> </span><span class="symbol">=</span><span class="normal"> c</span><span class="symbol">[</span><span class="normal">i</span><span class="symbol">]</span><span class="normal"> </span><span class="symbol">+</span><span class="normal"> </span><span class="function">Vec</span><span class="symbol">(</span><span class="function">clamp</span><span class="symbol">(</span><span class="normal">r</span><span class="symbol">.</span><span class="normal">x</span><span class="symbol">),</span><span class="function">clamp</span><span class="symbol">(</span><span class="normal">r</span><span class="symbol">.</span><span class="normal">y</span><span class="symbol">),</span><span class="function">clamp</span><span class="symbol">(</span><span class="normal">r</span><span class="symbol">.</span><span class="normal">z</span><span class="symbol">))*</span><span class="number">.25</span><span class="symbol">;</span><span class="normal"> </span>
+<li class="even"> <span class="normal">        </span><span class="cbracket">}</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">  </span><span class="cbracket">}</span><span class="normal"> </span>
+<li class="even"> <span class="normal">  </span><span class="usertype">FILE</span><span class="normal"> </span><span class="symbol">*</span><span class="normal">f </span><span class="symbol">=</span><span class="normal"> </span><span class="function">fopen</span><span class="symbol">(</span><span class="string">"image.ppm"</span><span class="symbol">,</span><span class="normal"> </span><span class="string">"w"</span><span class="symbol">);</span><span class="normal">         </span><span class="comment">// Write image to PPM file. </span>
+<li class="odd"> <span class="normal">  </span><span class="function">fprintf</span><span class="symbol">(</span><span class="normal">f</span><span class="symbol">,</span><span class="normal"> </span><span class="string">"P3</span><span class="specialchar">\n</span><span class="string">%d %d</span><span class="specialchar">\n</span><span class="string">%d</span><span class="specialchar">\n</span><span class="string">"</span><span class="symbol">,</span><span class="normal"> w</span><span class="symbol">,</span><span class="normal"> h</span><span class="symbol">,</span><span class="normal"> </span><span class="number">255</span><span class="symbol">);</span><span class="normal"> </span>
+<li class="even"> <span class="normal">  </span><span class="keyword">for</span><span class="normal"> </span><span class="symbol">(</span><span class="type">int</span><span class="normal"> i</span><span class="symbol">=</span><span class="number">0</span><span class="symbol">;</span><span class="normal"> i</span><span class="symbol">&lt;</span><span class="normal">w</span><span class="symbol">*</span><span class="normal">h</span><span class="symbol">;</span><span class="normal"> i</span><span class="symbol">++)</span><span class="normal"> </span>
+<li class="odd"> <span class="normal">    </span><span class="function">fprintf</span><span class="symbol">(</span><span class="normal">f</span><span class="symbol">,</span><span class="string">"%d %d %d "</span><span class="symbol">,</span><span class="normal"> </span><span class="function">toInt</span><span class="symbol">(</span><span class="normal">c</span><span class="symbol">[</span><span class="normal">i</span><span class="symbol">].</span><span class="normal">x</span><span class="symbol">),</span><span class="normal"> </span><span class="function">toInt</span><span class="symbol">(</span><span class="normal">c</span><span class="symbol">[</span><span class="normal">i</span><span class="symbol">].</span><span class="normal">y</span><span class="symbol">),</span><span class="normal"> </span><span class="function">toInt</span><span class="symbol">(</span><span class="normal">c</span><span class="symbol">[</span><span class="normal">i</span><span class="symbol">].</span><span class="normal">z</span><span class="symbol">));</span><span class="normal"> </span>
+<li class="even"> <span class="cbracket">}</span><span class="normal"> </span>
+<li class="odd"> </ol></code></pre></td></tr></table>
+
+<p><a name=formats>Other formats</a>
+<ul>
+<li><a href="smallpt.txt">smallpt.cpp</a> (plain text)
+<li><a href="smallpt4k.txt">smallpt4k.cpp</a> (4 KB executable version)
+<li><a href="smallpt.tar.gz">smallpt.tar.gz</a> (982 KB) Full distribution.
+  Includes the above source files, Makefile, README, LICENSE, and
+  resulting rendered image (losslessly converted to PNG).
+</ul>
+
+
+<h2>Usage</h2>
+
+<p><table class=example><tr><td>
+<pre><code>g++ -O3 -fopenmp smallpt.cpp -o smallpt 
+time ./smallpt 5000
+display image.ppm</code></pre></td></tr></table>
+
+<p>The argument to smallpt ("5000") is the number of samples per pixel, and must be
+greater than 4. If you don't have ImageMagick's
+<a href="http://www.imagemagick.org/script/display.php">display</a>
+command available, you can use other viewers such as gthumb, gwenview, xv, gimp, etc.
+
+<P>GCC 4.2 or newer is required for multi-threading,
+however older versions of gcc will still work without threading.
+Remove the "-fopenmp" flag to disable threading support.
+
+<p>
+smallpt compiles with <a href="http://gcc.gnu.org">GCC</a> 4.2 down to a 16 KB
+executable and produces a 1024x768 resolution image. Rendering using 5000 paths
+per pixel takes 2.1 hours on an Intel Core 2 Quad machine.
+
+  <p>A slightly modified version is provided which compiles to a 4 KB (4049 bytes)
+compressed executable. Do "make smallpt4k" to build. 
+See smallpt4k.cpp and the Makefile in the full distribution for more information.
+Note <a href="http://www.muppetlabs.com/~breadbox/software/elfkickers.html">sstrip</a>
+and <a href="http://p7zip.sourceforge.net/">p7zip</a> are required.
+  
+<p>If self assembly is used, the binary is only 2.7 KB (2666 bytes).
+Do "make smallptSA" to build.
+
+<h2>Details</h2>
+
+<p>
+<table><tr>
+<td><a href="result_8.png"><img src="result_t_8.jpg"></a></td>
+<td><a href="result_40.png"><img src="result_t_40.jpg"></a></td>
+<td><a href="result_200.png"><img src="result_t_200.jpg"></a></td>
+<td><a href="result_1000.png"><img src="result_t_1000.jpg"></a></td>
+<td><a href="result_5k.png"><img src="result_t_5k.jpg"></a></td>
+<td><a href="result_25k.png"><img src="result_t_25k.jpg"></a></td>
+</tr><tr>
+<td><a href="result_8.png"><img src="result_crop_8.jpg"></a></td>
+<td><a href="result_40.png"><img src="result_crop_40.jpg"></a></td>
+<td><a href="result_200.png"><img src="result_crop_200.jpg"></a></td>
+<td><a href="result_1000.png"><img src="result_crop_1000.jpg"></a></td>
+<td><a href="result_5k.png"><img src="result_crop_5k.jpg"></a></td>
+<td><a href="result_25k.png"><img src="result_crop_25k.jpg"></a><br></td>
+</tr><tr style="text-align: center;">
+<td>8 spp<br>13 sec</td>
+<td>40 spp<br>63 sec</td>
+<td>200 spp<br>5 min</td>
+<td>1000 spp<br>25 min</td>
+<td>5000 spp<br>124 min</td>
+<td>25000 spp<br>10.3 hrs</td>
+</tr><tr>
+<td colspan=6>Timings and resulting images
+for different numbers of samples per pixel (spp) on a 2.4 GHz Intel Core 2 Quad CPU
+using 4 threads.
+</tr></table>
+
+<p>The box scene is constructed out of nine very large spheres which overlap.
+The camera is very close to their surface so they appear flat, yet each wall is
+actually the side of a sphere. The light is another sphere poking through the ceiling
+which is why it's round instead of the normal square.
+The black area visible in the mirror ball
+is the front of the box colored black to appear like empty space.
+
+<p>The image is computed by solving the
+<a href="http://en.wikipedia.org/wiki/Rendering_equation">rendering equation</a>  
+using
+<a href="http://mathworld.wolfram.com/MonteCarloIntegration.html">numerical
+  integration</a>.
+The specific algorithm is Monte Carlo path tracing with
+<a href="http://www.iit.bme.hu/~szirmay/russian_link.htm">Russian roulette</a>
+for path termination. 
+I highly recommend Shirley's and Jensen's execellent books (linked below) for
+explanations of these ideas.
+Due to size constraints and simplicity,
+explicit light sampling is not used, nor any ray intersection acceleration data structure.
+
+<p>Parallelism is achieved using an OpenMP <code>#pragma</code> to dynamically
+allocate rows of the image to different threads, with a thread for each processor or core.
+The variable <code>Xi</code> is used to store the state of the random number
+generator <code>erand48()</code>, and is seeded using an arbitrary function of
+the row number to decorrelate (at least visually) the sequences from row-to-row.
+In this way the sequences are deterministic and consistent from run to run,
+and independent of which thread is executing and in what order the rows are executed.
+
+<p>Anti-aliasing is done using supersampling, which removes all the jaggies
+except around the light. These are handled by using 2x2 subpixels which
+are clamped and then averaged.
+
+<p>Instead of fclose()ing the file, I exploit the
+<a href="http://dev.feuvan.net/docs/isocpp/basic.html#basic.start.main">C++ standard</a> which
+calls return(0) implicitly, which in turn calls exit(0), which flushes and closes open files.
+
+<h2>More Scenes</h2>
+
+These images were all generated by smallpt by
+replacing the Cornell box scene definition with
+<a href="extraScenes.txt">varying combinations of 4 to 22 spheres</a>.
+
+<p>
+<a href="sky.png"><img src="sky_t.jpg"></a>
+<a href="nightsky.png"><img src="nightsky_t.jpg"></a>
+<a href="wada.png"><img src="wada_t.jpg"></a>
+<a href="island.png"><img src="island_t.jpg"></a><br>
+<a href="wada2.png"><img src="wada2_t.jpg"></a>
+<a href="vista.png"><img src="vista_t.jpg"></a>
+<a href="overlap.png"><img src="overlap_t.jpg"></a>
+<a href="forest.png"><img src="forest_t.jpg"></a>
+
+<h2><a name=license>License</a></h2>
+
+The source is released under the MIT license, which is open and compatible with
+GPL. See LICENSE.txt in the distribution for more information.
+
+<h2><a name="mods">Modifications</a></h2>
+
+<ul>
+<li><a href="explicit.cpp">explicit.cpp</a> 
+  <b>Huge</b> speedup, especially for small lights.
+  Adds explicit light sampling with
+  23 additional lines of code and a small
+  function signature change. Produces <a href="explicit16.png">this image</a>
+  in 10 seconds on a Intel Core i7 920 quad-core CPU using 16 samples per pixel.
+<li><a href="forward.cpp">forward.cpp</a> Revision of <code>radiance()</code> function
+  that removes all recursion and uses only a simple loop and no path
+  branching. That is, the ray tree is always one ray wide.
+<li><a href="http://ompf.org/forum/viewtopic.php?p=11522#p11522">Single
+    precision float support</a> by Christopher Kulla. Mostly fixes
+  <a href="http://ompf.org/forum/viewtopic.php?p=11223#p11223">crazy
+  artifacts</a> that appear when single precision floats are used, by avoiding self intersection. There is
+  still a light leak at at the top of the scene though.
+</ul>
+
+<h2><a name="ports">Ports</a></h2>
+
+<ul>
+<li>
+  <a href="http://code.google.com/p/tokaspt/">tokaspt</a> Interactive version
+  in CUDA by Thierry Berger-Perrin. Features realtime display and scene
+  editing.
+  <center><a href="http://code.google.com/p/tokaspt/">
+      <img src="img_ui_bloated_t.jpg">
+      <img src="img_hall_of_mirrors_small_t.jpg">
+  </a></center>
+
+<li><a href="http://ompf.org/forum/viewtopic.php?p=11483#p11483">BSGP Port</a>
+  Port to <a href="http://www.kunzhou.net/#BSGP">BSGP</a> done by Hou Qiming.
+
+<li><a href="http://www.democopei.de/smallpt.html">JavaScript port</a>
+by Sven Klose
+
+<li><a href="http://github.com/noteed/smallpt-hs">Haskell port</a> by
+  Vo Minh Thu, available on <a href="http://hackage.haskell.org/packages/archive/pkg-list.html">Hackage</a>
+
+<li><a href="http://cg.tuwien.ac.at/~zsolnai/gfx/smallpaint/">smallpaint</a> by Károly Zsolnai,
+  adds explicit light sampling, Halton sequences, a painting effect, and more.
+  <center><a href="http://cg.tuwien.ac.at/~zsolnai/gfx/smallpaint/">
+      <img src="smallpaint_t.jpg">
+  </a></center>
+
+<li><a href="http://davibu.interfree.it/opencl/smallptgpu/smallptGPU.html">smallptGPU</a> and
+<a href="http://davibu.interfree.it/opencl/smallptgpu2/smallptGPU2.html">smallptGPU2</a> by
+David Bucciarelli are OpenCL implementations based on smallpt.
+  <center><a href="http://davibu.interfree.it/opencl/smallptgpu2/smallptGPU2.html">
+      <img src="smallptGPU_t.jpg">
+  </a></center>
+
+<li><a href="https://github.com/jackpal/smallpt-swift">Swift port</a> by Jack Palevich
+  
+</ul>
+
+
+<h2><a name="moreinfo">More Information</a></h2>
+
+<ul class=linklist>
+
+<li>
+<a href="https://docs.google.com/open?id=0B8g97JkuSSBwUENiWTJXeGtTOHFmSm51UC01YWtCZw">Presentation slides about smallpt</a> by David Cline<br>
+Slides with line-by-line explanations of the explicit lighting
+version of smallpt, which has been reformatted to be 75% longer.
+Thank you, Dr. Cline!
+(<a href="smallpt_cline_slides.ppt">mirror</a>)
+  
+<li>
+<a href="http://www.hxa7241.org/minilight/minilight.html">
+MINILIGHT - a minimal global illumination renderer</a>,
+by Harrison Ainsworth<br>
+A similar, earlier project. More general but also larger (10x). The site has
+some good information on Monte Carlo path tracing. Instead of repeating it
+here, please visit the site.
+
+<li><a href="http://neos1.wordpress.com/2008/11/02/path-tracing-for-the-win/">
+Neos path tracer</a> by Michal Ciebiada<br>
+381 line Ocaml path tracer. A similar project although somewhat larger (3X) and
+in Ocaml.
+
+<li><a href="http://www.amazon.com/Realistic-Ray-Tracing-Peter-Shirley/dp/1568811101">
+Realistic Ray Tracing</a>,
+by Peter Shirley<br>
+Almost 100% of smallpt is derived from this book.
+
+<li><a href="http://graphics.ucsd.edu/~henrik/images/cbox.html">
+Cornell box images</a>, by Henrik Wann Jensen<br>
+The inpiration of the output generated by smallpt.
+
+<li><a href="http://www.graphics.cornell.edu/online/box/">
+The original Cornell Box</a><br>
+An icon of graphics research
+
+<li><a href="http://graphics.ucsd.edu/~henrik/papers/book/">Realistic
+Image Synthesis Using Photon Mapping</a>, by Henrik Wann Jensen<br>
+Explains Russian roulette and a lot more.
+
+  <li><a href="http://ompf.org/ray/sphereflake/">Sphereflake</a>,
+by Thierry Berger-Perrin<br>
+Short ray-sphere intersection code
+
+<li><a href="http://ompf.org/stuff/sf4k/">sf4k</a>,
+by Thierry Berger-Perrin<br>
+Idea for 4K-ness. (No full GI.)
+(<a href="http://ompf.org/forum/viewtopic.php?f=8&t=707&start=0&st=0&sk=t&sd=a">more info</a>)
+
+<li><a href="http://www.ffconsultancy.com/languages/ray_tracer/comparison.html">
+C++ vs OCaml: Ray tracer comparison</a>, by Jon D. Harrop<br>
+105 line C++ ray tracer. (No full GI.)
+
+<li><a href="http://in4k.untergrund.net/index.php?title=Linux">
+Introduction to Linux as 4 KB Platform</a><br>
+Some information regarding shrinking binaries to 4 KB on Linux. Plus
+<a href="http://ftp.kameli.net/pub/fit/misc/presis_asm06.pdf">this</a> and
+<a href="http://www.muppetlabs.com/~breadbox/software/tiny/teensy.html">this</a>.
+
+
+<li><a href="http://ompf.org/forum/">
+Ompf.org forum</a><br>
+Online ray tracing community, with links to many other ray tracers
+
+</ul>
+
+<p>Last update: 11/5/2014<br>
+Initial version: 4/29/2007
+
+<h2>Comments</h2>
+
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+  /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+  var disqus_shortname = 'kevinbeason'; // required: replace example with your forum shortname
+  var disqus_identifier = 'smallpt';
+  /* * * DON'T EDIT BELOW THIS LINE * * */
+  (function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by
+<span class="logo-disqus">Disqus</span></a>
+
+<!-- Start of StatCounter Code -->
+<script type="text/javascript">
+var sc_project=4206967; 
+var sc_invisible=1; 
+var sc_partition=48; 
+var sc_click_stat=1; 
+var sc_security="6991182e"; 
+</script>
+
+<script type="text/javascript" src="http://www.statcounter.com/counter/counter.js"></script><noscript><div class="statcounter"><a title="site stats" href="http://www.statcounter.com/free_web_stats.html" target="_blank"><img class="statcounter" src="http://c.statcounter.com/4206967/0/6991182e/1/" alt="site stats" ></a></div></noscript>
+<!-- End of StatCounter Code -->
+
+
+<hr>
+<table width="100%"><tr>
+<td><a href="http://kevinbeason.com/">Kevin Beason</a> /
+<a href="../email.php?u=kevin.beason&d=gmail.com">
+<img src="images/beason_email_lblue.gif"
+align=absmiddle alt="kevin.beason [at] gmail.com" border=0></a></td>
+<td align=right><a
+href="http://kevinbeason.com/">Home</a></td></tr>
+</table>
+
+  <!-- End contents -->
+  
+  </td>
+  </tr>
+  </table>
+  </td>
+</tr>
+</table></center><!--
+--></body>
+</html>
+
+
