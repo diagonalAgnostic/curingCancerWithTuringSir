@@ -109,11 +109,11 @@ struct rgb()
 	int * col; // column for same
 
 	int * y // the luminosity
-	int * aCr; // red shifted chromesence (cool word)
+	int * aCr; // red shifted chromesence 
 	int * aCb; // blue shifted ""
 
-	int * dCr; // first pixel data for the image data 
-	int * dCb; // second pixel data for the image data
+	int * dCr; // first pixel of the image 
+	int * dCb; 
 
 	short * yP; // y coordinate on plane
 				// for representing the numeric relationship relative in a more 'objective' 3-D perspective
