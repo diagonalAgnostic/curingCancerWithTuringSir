@@ -14,7 +14,7 @@
 
 //  NOTE: look at smallpt. code for data structures useful in 3D imaging diagnostics
 //  polygon in 3 d space and add squishing in shape to contour the polygon around and within the biomorphic tendencies 
-//  of the human morphology
+//  of the human (and other animals, for that matter) body
 
 
 typedef struct struct poly
