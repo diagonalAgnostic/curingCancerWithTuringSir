@@ -9,8 +9,8 @@
 // entropicOfCancer
 // author: JC Aggeles
 
-// thanks to Mrs. Kernighan, Richie, and everyone at Bell Labs (et al) who helped design and maintain B & C
-// special thanks to Mrs. Gates and Allen and the Microsoft support team for their help with the VS Code integrated development environment and the windows family of operating systems
+// thanks to Mssrs. Kernighan, Richie, and everyone at Bell Labs (et al) who helped design and maintain B & C
+// special thanks to Mssrs. Gates and Allen and the Microsoft support team for their help with the VS Code integrated development environment and the windows family of operating systems
 // a very special thanks to Alan Turing and Walter Pitts (et al, particularly McCullough) for their work on AI -- we love you all, forever and forever
 #include<cstdlib>
 #include<libc.lib>
