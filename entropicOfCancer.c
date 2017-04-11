@@ -132,7 +132,7 @@ struct poly()
 
 	int * radii; // various lengths of radii, primarily the horizontal and the vertical, though extra radii are also quite possible and may well prove very interesting! 
 				// it would be very good to extend radii within extra planes beyond the one that the polygon currently inhabits, such that the polygon would extend within many 
-				// different planes such that each length (much as a snek might describe) would or (more rightly, statistically speaking) _could_ extend into different planes. 
+				// different planes so each length (much as a snek might describe) would or (more rightly, statistically speaking) _could_ extend into different planes. 
 	
 	double angle = 360/sides;
 	// the angle of the polygonal bend 
