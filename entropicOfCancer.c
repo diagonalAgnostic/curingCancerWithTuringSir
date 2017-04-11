@@ -7,6 +7,7 @@
 // thanks to Mssrs. Kernighan, Richie, and everyone at Bell Labs (et al) who helped design and maintain B & C
 // special thanks to Mssrs. Gates and Allen and the Microsoft support team for their help with the VS Code integrated development environment and the windows family of operating systems
 // a very special thanks to Alan Turing and Walter Pitts (et al, particularly McCullough) for their work on AI -- we love you all, forever and forever
+// and one last thank you to Dr. Salk, who serendipitously cured polio, and who inspired me to share my work as greater good will be done by giving it away rather than keeping it proprietary. Cheers, Dr. Salk!
 #include<cstdlib>
 #include<libc.lib>
 
