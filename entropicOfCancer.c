@@ -1,11 +1,6 @@
 // On curing cervical cancer via early detection of type II biomorphic virality via anonymous jpeg image. 
 // Intel's ML (or Deep learning as it's called with more than 2 layers of neural decision maps) SDK is one of the libraries one is encouraged to use, as a 20k prize goes to most inventive use of Intel technology
 
-// BBLF-KFH73J56  -- INTEL SDK deep learning signature
-
-// ssh key ea:69:5a:4a:66:c8:cf:c6:32:cf:a5:1c:33:14:66:a5 curingCancerForTheOutkasts
-// everything'sEventual
-
 // entropicOfCancer
 // author: JC Aggeles
 
